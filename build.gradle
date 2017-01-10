@@ -1,0 +1,83 @@
+buildscript {
+	repositories {
+		mavenCentral()
+		maven {
+			name = "GradleRIO"
+			url = "http://dev.imjac.in/maven"
+		}
+		maven { url "https://plugins.gradle.org/m2/" }
+	}
+	dependencies {
+		classpath group: 'jaci.openrio.gradle', name: 'GradleRIO', version: '+'
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+apply plugin: 'GradleRIO'
+
+group 'org.usfirst.frc.team449.IR Test'
+version '1.0'
+
+gradlerio.robotClass = "org.usfirst.frc.team449.robot.Robot"   //The class for the main Robot Class. Used in manifest
+gradlerio.team = "449"
+
+allprojects {
+	tasks.withType(Javadoc).all { enabled = false }
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		name = "GradleRio"
+		url = "http://dev.imjac.in/maven"
+	}
+
+	maven { url "https://plugins.gradle.org/m2/" }
+}
+
+dependencies {
+	compile group: 'edu.wpi.first.wpilibj', name: 'wpilibJavaFinal', version: '0.1.0-SNAPSHOT'
+	compile group: 'edu.wpi.first.wpilib.networktables.java', name: 'NetworkTables', version: '3.0.0-SNAPSHOT'
+	compile project(':449-central-repo')
+}
+
+
+/*idea {
+	module {
+		sourceDirs += file("${protobuf.generatedFilesBaseDir}/main/java")
+	}
+}*/
+
+task convertFiles << {
+	fileTree("./src/main/resources").matching { include "**/*.cfg" }.each { aFile ->
+		exec {
+			commandLine 'dos2unix'
+			args aFile.absolutePath
+		}
+	}
+}
+
+gradlerio {
+	deployers += [to: "/home/lvuser/map.cfg", from: './src/main/resources/map.cfg']
+}
+
+def robotManifest = {
+	attributes 'Main-Class': 'edu.wpi.first.wpilibj.RobotBase'
+	attributes 'Robot-Class': gradlerio.robotClass
+}
+
+jar {
+	from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+	manifest robotManifest
+}
+
+task genJavadoc(type: Jar, dependsOn: javadoc) {
+	classifier = 'javadoc'
+	from javadoc.destinationDir
+}
+
+artifacts {
+	archives genJavadoc
+}
